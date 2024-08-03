@@ -1,0 +1,171 @@
+static async connect(): Promise<string> {
+        return new Promise((resolve, reject) => {
+            socket()
+                .then((sock) => {
+                    let qrCodeHandled = false;
+
+                    sock.ev.on("connection.update", async (update) => {
+                        const { qr } = update;
+                        if (qr) {
+                            qrCodeHandled = true;
+                            try {
+                                const qrBase64 = await QRCode.toDataURL(qr);
+                                console.log(qr);
+                                resolve(qrBase64);
+                            } catch (error) {
+                                reject(
+                                    new ResponseError(
+                                        500,
+                                        "Cannot get QR code from server"
+                                    )
+                                );
+                            }
+                        }
+                    });
+
+                    // Timeout if QR code is not found within a certain time
+                    setTimeout(() => {
+                        if (!qrCodeHandled) {
+                            reject(new ResponseError(404, "QR code not found"));
+                        }
+                    }, 10000); // 10 seconds timeout
+                })
+                .catch((error) => {
+                    reject(new ResponseError(500, error.message));
+                });
+        });
+    }
+
+
+    // backup 2
+    static async connect(): Promise<string> {
+        return new Promise((resolve, reject) => {
+            socket()
+                .then(async (s) => {
+                    sock = s;
+                    let qrCodeHandled = false;
+
+                    const auth = await authState;
+
+                    sock.ev.on("creds.update", auth.saveCreds);
+                    sock.ev.on("connection.update", async (update) => {
+                        const { connection, lastDisconnect, qr } = update;
+
+                        if (connection === "open") {
+                            console.log("WhatsApp Active");
+                            logger.info("WhatsApp Active");
+                            resolve(""); // WhatsApp is connected, no need for QR code
+                        } else if (connection === "close") {
+                            console.log("WhatsApp Closed...");
+                            logger.info("WhatsApp Closed...");
+
+                            const customError = lastDisconnect?.error as {
+                                output?: {
+                                    statusCode: number;
+                                    payload?: { message?: string };
+                                };
+                            };
+                            const errorCode = customError?.output?.statusCode;
+                            const errorMessage =
+                                customError?.output?.payload?.message ||
+                                lastDisconnect?.error?.message;
+
+                            console.log(`Error Code: ${errorCode}`);
+                            console.log(`Error Message: ${errorMessage}`);
+                            logger.error(`Error Code: ${errorCode}`);
+                            logger.error(`Error Message: ${errorMessage}`);
+
+                            if (errorCode === 401) {
+                                fs.rmSync("session", {
+                                    recursive: true,
+                                    force: true,
+                                });
+                                console.log("Session deleted due to logout.");
+                                logger.info("Session deleted due to logout.");
+                                if (qr) {
+                                    qrCodeHandled = true;
+                                    try {
+                                        const qrBase64 = await QRCode.toDataURL(
+                                            qr
+                                        );
+                                        resolve(qrBase64);
+                                    } catch (error) {
+                                        reject(
+                                            new Error(
+                                                "Failed to generate QR code"
+                                            )
+                                        );
+                                    }
+                                } else {
+                                    reject(
+                                        new Error(
+                                            "Session deleted due to logout."
+                                        )
+                                    );
+                                }
+                            } else {
+                                console.log(`Error: ${errorMessage}`);
+                                logger.error(`Error: ${errorMessage}`);
+                                reject(new Error(`Error: ${errorMessage}`));
+                            }
+                        } else if (qr) {
+                            qrCodeHandled = true;
+                            try {
+                                const qrBase64 = await QRCode.toDataURL(qr);
+                                resolve(qrBase64);
+                            } catch (error) {
+                                reject(new Error("Failed to generate QR code"));
+                            }
+                        }
+                    });
+
+                    // Timeout if QR code is not found within a certain time
+                    setTimeout(() => {
+                        if (!qrCodeHandled) {
+                            reject(new ResponseError(404, "QR code not found"));
+                        }
+                    }, 10000); // 10 seconds timeout
+                })
+                .catch((error) => {
+                    reject(new ResponseError(500, error.message));
+                });
+        });
+    }
+
+    // backup 3
+    static async connect(): Promise<string> {
+        return new Promise((resolve, reject) => {
+            socket()
+                .then(async (s) => {
+                    sock = s;
+                    let qrCodeHandled = false;
+
+                    // const auth = await authState;
+
+                    // sock.ev.on("creds.update", auth.saveCreds);
+                    sock.ev.on("connection.update", async (update) => {
+                        const { qr } = update;
+
+                        if (qr) {
+                            qrCodeHandled = true;
+                            try {
+                                const qrBase64 = await QRCode.toDataURL(qr);
+                                resolve(qrBase64);
+                            } catch (error) {
+                                reject(new Error("Failed to generate QR code"));
+                            }
+                        }
+                    });
+
+                    // Timeout if QR code is not found within a certain time
+                    setTimeout(() => {
+                        if (!qrCodeHandled) {
+                            reject(new ResponseError(404, "QR code not found"));
+                        }
+                    }, 5000); // 10 seconds timeout
+                })
+                .catch((error) => {
+                    reject(new ResponseError(500, error.message));
+                });
+        });
+    }

@@ -1,0 +1,73 @@
+async function connectToWhatsApp() {
+    const auth = await authState;
+    const sock = await socket();
+
+    sock.ev.on("creds.update", auth.saveCreds);
+    sock.ev.on("connection.update", async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (connection === "open") {
+            console.log("WhatsApp Active");
+            logger.info("WhatsApp Active");
+        } else if (connection === "close") {
+            console.log("WhatsApp Closed...");
+            logger.info("WhatsApp Closed...");
+
+            // Mengecek apakah error adalah logout atau error lain
+            const customError = lastDisconnect?.error as {
+                output?: {
+                    statusCode: number;
+                    payload?: { message?: string };
+                };
+            };
+            const errorCode = customError?.output?.statusCode;
+            const shouldReconnect = errorCode !== DisconnectReason.loggedOut;
+            const errorMessage =
+                customError?.output?.payload?.message ||
+                lastDisconnect?.error?.message;
+
+            console.log(`Error Code: ${errorCode}`);
+            console.log(`Error Message: ${errorMessage}`);
+            logger.error(`Error Code: ${errorCode}`);
+            logger.error(`Error Message: ${errorMessage}`);
+
+            if (errorCode === 401) {
+                // Menghapus sesi ketika logout
+                fs.rmSync("session", { recursive: true, force: true });
+                console.log("Session deleted due to logout.");
+                logger.info("Session deleted due to logout.");
+            } else {
+                console.log(`Error: ${errorMessage}`);
+                logger.error(`Error: ${errorMessage}`);
+            }
+
+            if (shouldReconnect) {
+                connectToWhatsApp();
+            } else if (errorCode === DisconnectReason.loggedOut) {
+                setTimeout(connectToWhatsApp, 10000);
+            }
+
+            // if (errorCode === DisconnectReason.loggedOut) {
+            //     // Menghapus sesi ketika logout
+            //     fs.rmSync("session", { recursive: true, force: true });
+            //     console.log("Session deleted due to logout.");
+            //     logger.info("Session deleted due to logout.");
+            //     // Mulai ulang koneksi dengan sesi baru
+            //     connectToWhatsApp();
+            // } else if (errorCode !== DisconnectReason.loggedOut) {
+            //     // Memberikan waktu sebelum mencoba menghubungkan kembali
+            //     setTimeout(connectToWhatsApp, 5000); // Menghubungkan kembali setelah 5 detik
+            // }
+
+            // Memberikan waktu sebelum mencoba menghubungkan kembali
+            // setTimeout(connectToWhatsApp, 10000); // Menghubungkan kembali setelah 5 detik
+        } else if (connection === "connecting") {
+            console.log("WhatsApp connecting");
+            logger.info("WhatsApp connecting");
+        }
+
+        if (qr) {
+            console.log("Scan QR Code to connect:", qr);
+        }
+    });
+}
