@@ -13,4 +13,16 @@ export class WhatsappController {
             next(error);
         }
     }
+
+    static async sendMessage(req: Request, res: Response, next: NextFunction) {
+        try {
+            const result = await WhatsappService.sendMessage();
+            res.status(200).json({
+                message: "Success send message",
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
 }

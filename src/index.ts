@@ -1,6 +1,7 @@
 import {
     DisconnectReason,
     useMultiFileAuthState,
+    WASocket,
 } from "@whiskeysockets/baileys";
 import { logger } from "./application/logging";
 // import { authState, socket } from "./application/wa";
@@ -9,14 +10,19 @@ import "dotenv/config";
 import fs from "fs";
 import { Boom } from "@hapi/boom";
 import { socket } from "./application/wa";
+// import { WhatsappController } from "./controller/whatsapp-controller";
+// import corsMiddleware from "./middleware/cors-middleware";
+// import express from "express";
+// import { appRouter } from "./routes";
+// import { errorMiddleware } from "./middleware/error-middleware";
 
-const port: number =
-    process.env.PORT != null ? parseInt(process.env.PORT) : 3000;
+// const port: number =
+//     process.env.PORT != null ? parseInt(process.env.PORT) : 3000;
 
-web.listen(port, () => {
-    console.log(`Listening on http://localhost:${port}`);
-    logger.info(`Listening on http://localhost:${port}`);
-});
+// web.listen(port, () => {
+//     console.log(`Listening on http://localhost:${port}`);
+//     logger.info(`Listening on http://localhost:${port}`);
+// });
 
 // (async () => {
 //     const [sock, auth] = await Promise.all([socket(), authState]);
@@ -39,9 +45,12 @@ web.listen(port, () => {
 
 // let cek: boolean = false
 
+export let outSock: WASocket;
+
 export async function connectToWhatsApp() {
     const auth = await useMultiFileAuthState("session");
     const sock = await socket(auth);
+    outSock = sock;
 
     sock.ev.on("creds.update", auth.saveCreds);
     sock.ev.on("connection.update", async (update) => {
@@ -103,3 +112,18 @@ export async function connectToWhatsApp() {
 }
 
 connectToWhatsApp();
+
+// web.get("/send-message", WhatsappController.sendMessage({sock: outSock}));
+
+// web.use(corsMiddleware);
+// web.use(express.json());
+// web.use(express.urlencoded({ extended: true }));
+// web.use(appRouter);
+// web.use(errorMiddleware);
+const port: number =
+    process.env.PORT != null ? parseInt(process.env.PORT) : 3000;
+
+web.listen(port, () => {
+    console.log(`Listening on http://localhost:${port}`);
+    logger.info(`Listening on http://localhost:${port}`);
+});
